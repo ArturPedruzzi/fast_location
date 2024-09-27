@@ -2,6 +2,7 @@ import 'package:fast_location/src/shared/colors/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/services.dart';
+import 'package:map_launcher/map_launcher.dart';
 import '../controller/address_controller.dart';
 import '../components/empty_search.dart';
 import '../../../shared/components/custom_button.dart';
@@ -161,9 +162,36 @@ class HomePage extends StatelessWidget {
                   Navigator.pushNamed(context, '/history');
                 },
               ),
+              const SizedBox(height: 60),
             ],
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.primary,
+        onPressed: () async {
+          final String query =
+              '${controller.address?.logradouro}, ${controller.address?.bairro}, ${controller.address?.cidade}, ${controller.address?.uf}';
+
+          final availableMaps = await MapLauncher.installedMaps;
+
+          await availableMaps
+              .firstWhere((map) => map.mapName == "Google Maps")
+              .showMarker(
+                coords: Coords(0, 0),
+                title: query,
+              );
+        },
+        shape: const CircleBorder(),
+        child: const Icon(Icons.fork_right, color: AppColors.white, size: 40),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: const SizedBox(
+        height: 40,
+        child: BottomAppBar(
+          color: AppColors.white,
+          shape: CircularNotchedRectangle(),
+        ),
       ),
     );
   }
