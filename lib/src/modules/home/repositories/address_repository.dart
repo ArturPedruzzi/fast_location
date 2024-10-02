@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../model/address_model.dart';
-import '../../../shared/storage/address_storage.dart';
+import 'package:hive/hive.dart';
 
 class AddressRepository {
   final String apiUrl = 'https://viacep.com.br/ws';
-  final AddressStorage localStorage = AddressStorage();
 
   Future<AddressModel> fetchAddress(String cep) async {
     if (cep.length != 8 || !RegExp(r'^[0-9]+$').hasMatch(cep)) {
@@ -22,14 +21,38 @@ class AddressRepository {
       }
 
       final address = AddressModel.fromJson(data);
-      await localStorage.saveAddress(address); 
+
+      // Salvando endereço no Hive
+      final Box<AddressModel> box =
+          await Hive.openBox<AddressModel>('addressBox');
+      await box.put(address.cep, address); // Usando o CEP como chave
+
       return address;
     } else {
-      throw Exception('Erro ao carregar o endereço. Código de status: ${response.statusCode}');
+      throw Exception(
+          'Erro ao carregar o endereço. Código de status: ${response.statusCode}');
     }
   }
 
   Future<AddressModel?> getStoredAddress(String cep) async {
-    return await localStorage.getAddress(cep); 
+    final Box<AddressModel> box =
+        await Hive.openBox<AddressModel>('addressBox');
+    return box.get(cep);
+  }
+
+  Future<List<AddressModel>> getStoredAddresses() async {
+    final Box<AddressModel> box =
+        await Hive.openBox<AddressModel>('addressBox');
+    return box.values.toList();
+  }
+
+  Future<void> saveAddress(AddressModel address) async {
+    final Box<AddressModel> box =
+        await Hive.openBox<AddressModel>('addressBox');
+
+    // Verifica se o endereço já está salvo antes de adicionar novamente
+    if (!box.containsKey(address.cep)) {
+      await box.put(address.cep, address);
+    }
   }
 }
