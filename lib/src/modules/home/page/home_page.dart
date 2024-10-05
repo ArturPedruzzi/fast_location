@@ -3,15 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/services.dart';
 import 'package:map_launcher/map_launcher.dart';
-import '../controller/address_controller.dart';
 import '../components/empty_search.dart';
+import '../controller/address_controller.dart';
 import '../../../shared/components/custom_button.dart';
-import 'package:fast_location/src/shared/components/navigation_circle.dart';
 
 class HomePage extends StatelessWidget {
-  final AddressController controller = AddressController();
+  final AddressController controller;
 
-  HomePage({super.key});
+  HomePage({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -47,19 +46,30 @@ class HomePage extends StatelessWidget {
                 ),
                 child: Observer(
                   builder: (_) {
-                    return const Column(
-                      children: [
-                        Icon(Icons.directions,
-                            size: 80, color: AppColors.primary),
-                        SizedBox(height: 10),
-                        Text(
-                          'Faça uma busca para localizar seu destino',
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    );
+                    if (controller.address != null) {
+                      // Exibir todas as informações do endereço pesquisado
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildRow('Logradouro/Rua', controller.address!.logradouro),
+                          _buildRow('Bairro/Distrito', controller.address!.bairro),
+                          _buildRow('Cidade/UF', '${controller.address!.cidade}/${controller.address!.uf}'),
+                          _buildRow('CEP', controller.address!.cep),
+                        ],
+                      );
+                    } else {
+                      return const Column(
+                        children: [
+                          Icon(Icons.directions, size: 80, color: AppColors.primary),
+                          SizedBox(height: 10),
+                          Text(
+                            'Faça uma busca para localizar seu destino',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      );
+                    }
                   },
                 ),
               ),
@@ -71,7 +81,7 @@ class HomePage extends StatelessWidget {
                     context: context,
                     builder: (context) {
                       final TextEditingController cepController =
-                          TextEditingController();
+                      TextEditingController();
                       return StatefulBuilder(
                         builder: (context, setState) {
                           return Dialog(
@@ -123,8 +133,8 @@ class HomePage extends StatelessWidget {
                                       await controller.fetchAddress(cep);
 
                                       if (controller.address != null) {
-                                        navigateToLocationDetail(
-                                            context, controller.address);
+                                        // Atualiza o endereço atual no Observer
+                                        Navigator.pop(context);
                                       }
                                     },
                                   ),
@@ -142,7 +152,8 @@ class HomePage extends StatelessWidget {
               const Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Icon(Icons.location_on, size: 25, color: AppColors.primary),
+                  Icon(Icons.history, size: 25, color: AppColors.primary), // Novo ícone adicionado
+                  SizedBox(width: 8),
                   Text(
                     'Últimos endereços localizados',
                     style: TextStyle(
@@ -154,7 +165,29 @@ class HomePage extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
-              const EmptySearchWidget(),
+              // Exibição do último endereço pesquisado (cidade, estado e CEP)
+              Observer(
+                builder: (_) {
+                  if (controller.addresses.isNotEmpty) {
+                    final lastAddress = controller.addresses.last;
+                    return Row(
+                      children: [
+                        Icon(Icons.location_city, size: 25, color: AppColors.primary), // Ícone atualizado
+                        SizedBox(width: 8),
+                        Text(
+                          '${lastAddress.cidade}, ${lastAddress.uf} - CEP: ${lastAddress.cep}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: AppColors.black,
+                          ),
+                        ),
+                      ],
+                    );
+                  } else {
+                    return const EmptySearchWidget();
+                  }
+                },
+              ),
               const SizedBox(height: 20),
               CustomButton(
                 label: 'Histórico de endereços',
@@ -178,9 +211,9 @@ class HomePage extends StatelessWidget {
           await availableMaps
               .firstWhere((map) => map.mapName == "Google Maps")
               .showMarker(
-                coords: Coords(0, 0),
-                title: query,
-              );
+            coords: Coords(0, 0),
+            title: query,
+          );
         },
         shape: const CircleBorder(),
         child: const Icon(Icons.fork_right, color: AppColors.white, size: 40),
